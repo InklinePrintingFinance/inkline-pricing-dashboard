@@ -1329,30 +1329,52 @@ export default function InklineDashboard() {
   const [toast,setToast]             = useState(null);
   const [overwriteTarget,setOverwrite] = useState(null); // {existing, incoming}
 
-  // Persist (browser localStorage)
+  // Persist — shared across all users via a serverless API backed by Redis
+  const [syncError,setSyncError] = useState(false);
+  const saveTimer = useRef(null);
+
   useEffect(()=>{
-    try{
-      const raw = window.localStorage.getItem("inkline-v4");
-      if(raw){
-        const d=JSON.parse(raw);
-        if(d.prod)          setProd(d.prod);
-        if(d.services)      setServices(d.services);
-        if(d.laborRates)    setLaborRates(d.laborRates);
-        if(d.lossAll)       setLossAll(d.lossAll);
-        if(d.savedOrders)   setSavedOrders(d.savedOrders);
-        if(d.extraCustomers)setExtraCust(d.extraCustomers);
+    (async()=>{
+      try{
+        const r = await fetch("/api/data", {
+          headers:{ Authorization:`Bearer ${SITE_PASSWORD}` },
+        });
+        if(r.ok){
+          const { value:d } = await r.json();
+          if(d){
+            if(d.prod)          setProd(d.prod);
+            if(d.services)      setServices(d.services);
+            if(d.laborRates)    setLaborRates(d.laborRates);
+            if(d.lossAll)       setLossAll(d.lossAll);
+            if(d.savedOrders)   setSavedOrders(d.savedOrders);
+            if(d.extraCustomers)setExtraCust(d.extraCustomers);
+          }
+        }else{
+          setSyncError(true);
+        }
+      }catch(_){
+        setSyncError(true);
       }
-    }catch(_){}
-    setHydrated(true);
+      setHydrated(true);
+    })();
   },[]);
 
   useEffect(()=>{
     if(!hydrated) return;
-    try{
-      window.localStorage.setItem("inkline-v4",
-        JSON.stringify({prod,services,laborRates,lossAll,savedOrders,extraCustomers})
-      );
-    }catch(_){}
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(()=>{
+      fetch("/api/data", {
+        method:"POST",
+        headers:{
+          Authorization:`Bearer ${SITE_PASSWORD}`,
+          "Content-Type":"application/json",
+        },
+        body: JSON.stringify({prod,services,laborRates,lossAll,savedOrders,extraCustomers}),
+      })
+        .then(r=>{ if(!r.ok) setSyncError(true); })
+        .catch(()=>setSyncError(true));
+    }, 600);
+    return ()=>clearTimeout(saveTimer.current);
   },[prod,services,laborRates,lossAll,savedOrders,extraCustomers,hydrated]);
 
   // Derive full customer list from saved orders + any extra typed names
@@ -1507,6 +1529,15 @@ export default function InklineDashboard() {
           </div>
         </div>
       </div>
+
+      {syncError&&(
+        <div style={{
+          background:"#200808",borderBottom:`1px solid ${C.danger}`,
+          color:C.text,fontSize:12,padding:"8px 22px",textAlign:"center",
+        }}>
+          ⚠️ Couldn't reach shared storage — changes may only be saved on this device until the connection is restored.
+        </div>
+      )}
 
       {/* ── CONTENT ── */}
       <div style={{maxWidth:1700,margin:"0 auto",paddingTop:18}}>
