@@ -21,9 +21,14 @@ const C = {
 // ═══════════════════════════════════════════════════════════════════════
 // DEFAULT STATE
 // ═══════════════════════════════════════════════════════════════════════
+const DEFAULT_LABOR_RATES = {
+  retail:138, retailPromo:125, business:95,
+  businessPromo:90, contractSize:75, contractSizeNew:60, rush:400,
+};
+
 const DEFAULT_PROD = {
   timePerHPT:2, inkCostPerColor:0.07, lightingCost:0, screenCost:15,
-  laborCostPerHr:138, wageCostPerHr:27,
+  laborCostPerHr:DEFAULT_LABOR_RATES.retail, wageCostPerHr:27,
   reclaimMin:9, screenRoomMin:9, designMin:12, pantoneMin:9,
   pressOperatorPPH:250, pressAssistPPH:250, catchersPPH:250, shippingHrs:0.25,
 };
@@ -43,11 +48,6 @@ const DEFAULT_ORDER = {
 const DEFAULT_SERVICES = {
   foldBagTag:1.7, sizeTagging:1.7, pantoneColor:15.75,
   colorChange:10.5, vectorFee:25, filePrep:10, allOtherWork:60,
-};
-
-const DEFAULT_LABOR_RATES = {
-  retail:138, retailPromo:125, business:95,
-  businessPromo:90, contractSize:75, contractSizeNew:60, rush:400,
 };
 
 const DEFAULT_LOSS = {
@@ -1342,7 +1342,9 @@ export default function InklineDashboard() {
         if(r.ok){
           const { value:d } = await r.json();
           if(d){
-            if(d.prod)          setProd(d.prod);
+            // Labor cost defaults to the current Retail rate every time the page opens
+            const retail = d.laborRates?.retail ?? DEFAULT_LABOR_RATES.retail;
+            setProd(p=>({...(d.prod||p), laborCostPerHr:retail}));
             if(d.services)      setServices(d.services);
             if(d.laborRates)    setLaborRates(d.laborRates);
             if(d.lossAll)       setLossAll(d.lossAll);
