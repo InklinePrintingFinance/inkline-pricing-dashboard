@@ -1262,9 +1262,61 @@ function InputsTab({prod,setProd,derived}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// LOGIN GATE
+// ═══════════════════════════════════════════════════════════════════════
+const SITE_PASSWORD = "Inkline";
+const AUTH_KEY = "inkline-authed";
+
+function LoginGate({onSuccess}) {
+  const [pw,setPw]       = useState("");
+  const [error,setError] = useState(false);
+
+  function submit(e){
+    e.preventDefault();
+    if(pw===SITE_PASSWORD){
+      try{ window.sessionStorage.setItem(AUTH_KEY,"1"); }catch(_){}
+      onSuccess();
+    }else{
+      setError(true);
+    }
+  }
+
+  return (
+    <div style={{
+      background:C.bg,minHeight:"100vh",color:C.text,
+      fontFamily:"'Outfit','DM Sans',sans-serif",
+      display:"flex",alignItems:"center",justifyContent:"center",padding:20,
+    }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');`}</style>
+      <form onSubmit={submit} style={{
+        background:C.surface,border:`1px solid ${C.border}`,borderRadius:14,
+        padding:"32px 30px",width:"100%",maxWidth:340,
+        boxShadow:"0 20px 60px rgba(0,0,0,0.6)",
+      }}>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:"0.1em",marginBottom:4}}>
+          INKLINE PRICING
+        </div>
+        <div style={{fontSize:11,color:C.dim,marginBottom:20}}>Enter password to continue</div>
+        <input
+          type="password" autoFocus value={pw}
+          onChange={e=>{setPw(e.target.value);setError(false);}}
+          placeholder="Password"
+          style={{...inputSt,marginBottom:error?8:16, borderColor:error?C.danger:C.border}}
+        />
+        {error&&<div style={{color:C.danger,fontSize:12,marginBottom:16}}>Incorrect password.</div>}
+        <Btn variant="primary" style={{width:"100%",justifyContent:"center"}}>Enter</Btn>
+      </form>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // ROOT APP
 // ═══════════════════════════════════════════════════════════════════════
 export default function InklineDashboard() {
+  const [authed,setAuthed] = useState(()=>{
+    try{ return window.sessionStorage.getItem(AUTH_KEY)==="1"; }catch(_){ return false; }
+  });
   const [tab,setTab]                 = useState("newOrder");
   const [prod,setProd]               = useState(DEFAULT_PROD);
   const [order,setOrder]             = useState({...DEFAULT_ORDER,date:today()});
@@ -1383,6 +1435,8 @@ export default function InklineDashboard() {
     {id:"priorOrders", label:"Prior Orders", icon:"🗂"},
     {id:"inputs",      label:"Inputs",       icon:"⚙️"},
   ];
+
+  if(!authed) return <LoginGate onSuccess={()=>setAuthed(true)} />;
 
   return (
     <div style={{background:C.bg,minHeight:"100vh",fontFamily:"'Outfit','DM Sans',sans-serif",color:C.text}}>
